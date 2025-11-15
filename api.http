@@ -7,4 +7,23 @@ Content-Type: application/json
 }
 
 ###
+POST http://127.0.0.1:8000/bands/
+Content-Type: application/json
+
+{
+    "name": "Boards of Canada",
+    "genre": "electronic",
+    "albums": [
+        {
+            "title": "tomorrows harvest",
+            "release_date": "2013-01-18"
+        },
+        {
+            "title": "tomorrows harvest 2",
+            "release_date": "2023-07-18"
+        }
+    ]
+}
+
+###
 GET http://127.0.0.1:8000/bands?genre=electronic

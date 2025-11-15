@@ -1,12 +1,21 @@
 from typing import Annotated
+from fastapi import FastAPI, HTTPException, Path, Query, Depends
+from models import BandBase, GenreURLChoices, BandCreate, Album, Band
+from contextlib import asynccontextmanager
+from db import init_db, get_session
+from sqlmodel import Session, select
 
-from fastapi import FastAPI, HTTPException, Path, Query
-from schemas import BandBase, GenreURLChoices, BandWithId, BandCreate
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
 
 app = FastAPI(
     title="FastAPI",
     description="Sample FastAPI application",
     version="0.1.0",
+    lifespan=lifespan
 )
 
 
@@ -51,8 +60,9 @@ async def bands(
     genre: GenreURLChoices | None = None,
     has_albums: bool = False,
     q: Annotated[str | None, Query(max_length=10)] = None,
-) -> list[BandWithId]:
-    band_list = [BandWithId(**b) for b in BANDS]
+    session: Session = Depends(get_session)
+) -> list[Band]:
+    band_list = session.exec(select(Band)).all()
     if genre:
         band_list = [b for b in band_list if b.genre.value.lower() == genre.value]
     if has_albums:
@@ -68,8 +78,8 @@ async def bands(
 @app.get("/bands/{band_id}")
 async def band(
     band_id: Annotated[int, Path(title="The band ID", openapi_examples="1")],
-) -> BandWithId:
-    band_list = [BandWithId(**b) for b in BANDS]
+) -> Band:
+    band_list = [Band(**b) for b in BANDS]
     band = next((b for b in band_list if b.id == band_id), None)
     if band is None:
         return HTTPException(status_code=404, detail="Band not found")
@@ -77,8 +87,21 @@ async def band(
 
 
 @app.post("/bands")
-async def create_band(band_data: BandCreate) -> BandWithId:
-    id = BANDS[-1]["id"] + 1
-    band = BandWithId(id=id, **band_data.model_dump()).model_dump()
-    BANDS.append(band)
+async def create_band(
+    band_data: BandCreate,
+    session: Session = Depends(get_session)
+) -> Band:
+    band = Band(name=band_data.name, genre=band_data.genre)
+    session.add(band)
+
+    if band_data.albums:
+        for album in band_data.albums:
+            album_obj = Album(
+                title=album.title, release_date=album.release_date, band=band
+            )
+            session.add(album_obj)
+
+    session.commit()
+    session.refresh(band)
+
     return band
