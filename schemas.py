@@ -1,13 +1,20 @@
 from datetime import date
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
-class GenerateURLChoices(Enum):
+class GenreURLChoices(Enum):
     ROCK = 'rock'
     ELECTRONIC = 'electronic'
     METAL = 'metal'
-    HIP_HOP = 'hip_hop'
+    HIP_HOP = 'hip-hop'
+
+
+class GenreChoices(Enum):
+    ROCK = 'Rock'
+    ELECTRONIC = 'Electronic'
+    METAL = 'Metal'
+    HIP_HOP = 'Hip-Hop'
 
 
 class Album(BaseModel):
@@ -18,8 +25,17 @@ class Album(BaseModel):
     is_available: bool = True
 
 
-class Band(BaseModel):
-    band_id: int
+class BandBase(BaseModel):
     name: str
-    genre: str
+    genre: GenreChoices
     albums: list[Album] = []
+
+
+class BandCreate(BandBase):
+    @field_validator("genre", mode="before")
+    def title_case_genre(cls, value) -> str:
+        return value.title() if isinstance(value, str) else value.value
+
+
+class BandWithId(BandBase):
+    id: int
