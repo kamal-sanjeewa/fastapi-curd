@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from schemas import Band
+from schemas import Band, GenerateURLChoices
 from fastapi import HTTPException
 
 app = FastAPI(
@@ -38,7 +38,9 @@ BANDS = [
 
 
 @app.get("/bands")
-async def bands() -> list[Band]:
+async def bands(genre: GenerateURLChoices | None ) -> list[Band]:
+    if genre:
+        return [Band(**b) for b in BANDS if b["genre"].lower() == genre.value]
     return [Band(**b) for b in BANDS]
 
 
